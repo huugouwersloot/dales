@@ -231,6 +231,7 @@ SAVE
 
   ! Surface properties in case of prescribed conditions (previous isurf 2, 3 and 4)
   real              :: thls  = -1             !<  Surface liquid water potential temperature [K]
+  real              :: dsst  =  0             !<  Amplitude of SST perturbation [K] (note: in temperature, not thl) (RCEMIP II)
   real              :: qts                    !<  Surface specific humidity [kg/kg]
   real              :: thvs                   !<  Surface virtual temperature [K]
   real(field_r), allocatable :: svs   (:)              !<  Surface scalar concentration [-]

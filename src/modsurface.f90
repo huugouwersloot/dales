@@ -91,7 +91,7 @@ contains
       ! Jarvis-Steward related variables
       rsminav, rssoilminav, LAIav, gDav, &
       ! Prescribed values for isurf 2, 3, 4
-      z0, thls, ps, ustin, wtsurf, wqsurf, wsvsurf, &
+      z0, thls, dsst, ps, ustin, wtsurf, wqsurf, wsvsurf, &
       ! Heterogeneous variables
       lhetero, xpatches, ypatches, land_use, loldtable, &
       ! AGS variables
@@ -154,6 +154,7 @@ contains
     call D_MPI_BCAST(wsvsurf(1:nsv),nsv,0,comm3d,mpierr)
     call D_MPI_BCAST(ps         ,1,0,comm3d,mpierr)
     call D_MPI_BCAST(thls       ,1,0,comm3d,mpierr)
+    call D_MPI_BCAST(dsst       ,1,0,comm3d,mpierr)
 
     call D_MPI_BCAST(lhetero                    ,            1,  0, comm3d, mpierr)
     call D_MPI_BCAST(loldtable                  ,            1,  0, comm3d, mpierr)
@@ -863,10 +864,12 @@ contains
 
   !> Prescribes the skin temperature
   subroutine presc_skin_temperature
-    use modglobal, only: i1, j1
+    use modglobal, only: i1, j1, imax, xsize, dx, pi, rd, cp, pref0
+    use modmpi, only: myidx
     implicit none
 
     integer :: i, j
+    real :: x, dthls
 
     if (lhetero) then
       do j = 2, j1
@@ -875,10 +878,12 @@ contains
         end do
       end do
     else
+      dthls = dsst / (ps/pref0)**(rd/cp) ! convert dsst (temperature) to a thls amplitude
       !$acc parallel loop collapse(2) default(present)
       do j = 2, j1
-        do i = 2, i1
-          tskin(i,j) = thls
+         do i = 2, i1
+          x = (myidx * imax + i - 2 + 0.5) * dx
+          tskin(i,j) = thls - dthls/2 * cos(2*pi*x / xsize) ! sst + optional cos-shaped perturbation (RCEMIP II)
         end do
       end do
     end if

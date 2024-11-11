@@ -63,10 +63,14 @@ module modsimpleice2
                              lambdar, lambdas, lambdag, &
                              qrmask, qcmask, precep, &
                              ccrz,ccsz,ccgz,ccrz2,ccsz2,ccgz2,&
-                             bbg,bbr,bbs,ddg,ddr,dds, iqr
+                             bbg,bbr,bbs,ddg,ddr,dds, iqr, inr
     use modtracers, only: add_tracer
     implicit none
     integer:: i, j, k
+
+    ! Nr is not used with simpleice. Added here temporarily for compatibility with old restart files
+    call add_tracer("Nr", long_name="rain droplet number concentration", &
+                    unit="1/m^3", lmicro=.true., isv=inr)
 
     call add_tracer("qr", long_name="Total precipitation mixing ratio", &
                     unit="kg/kg", lmicro=.true., isv=iqr) 

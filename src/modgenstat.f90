@@ -234,6 +234,8 @@ contains
     dt_lim = min(dt_lim,tnext)
 
     if (abs(timeav/dtav-nsamples)>1e-4) then
+       write (*,*) timeav, dtav, nsamples, timeav/dtav-nsamples
+       write (*,*) itimeav, idtav, tres
       stop 'NAMGENSTAT: timeav must be a integer multiple of dtav'
     end if
 

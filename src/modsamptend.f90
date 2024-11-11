@@ -114,14 +114,14 @@ subroutine initsamptend
 
 
     if (abs(timeav/dtav-nint(timeav/dtav))>1e-4) then
-      stop 'timeav must be a integer multiple of dtav'
+      stop 'modsamptend: timeav must be a integer multiple of dtav'
     end if
     if (.not. ladaptive .and. abs(dtav/dtmax-nint(dtav/dtmax))>1e-4) then
-      stop 'dtav should be a integer multiple of dtmax'
+      stop 'modsamptend: dtav should be a integer multiple of dtmax'
     end if
 
     if (ltenddec .and. .not. lprocblock) then
-      stop 'ltenddec is only intended to be used to complement processor-averaged budgets'
+      stop 'modsamptend: ltenddec is only intended to be used to complement processor-averaged budgets'
     end if
 
     if (lsamptendu) allocate (uptm(k1,nrfields,isamptot), upmn(k1,nrfields,isamptot), upav(k1,nrfields,isamptot), ust(k1,isamptot))

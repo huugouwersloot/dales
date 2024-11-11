@@ -82,11 +82,11 @@ contains
 
 
     if (abs(timeav/dtav-nsamples)>1e-4) then
-       stop 'radfield timeav must be a integer multiple of dtav'
+       stop 'NAMRADFIELD: timeav must be a integer multiple of dtav'
     end if
 
     if (.not. ladaptive .and. abs(dtav/dtmax-nint(dtav/dtmax))>1e-4) then
-       stop 'radfield dtav should be a integer multiple of dtmax'
+       stop 'NAMRADFIELD: dtav should be a integer multiple of dtmax'
     end if
 
     allocate(field_2D_mn(2-ih:i1+ih,2-jh:j1+jh,nvar))

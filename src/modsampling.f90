@@ -146,10 +146,10 @@ contains
     tnextwrite = itimeav +btime
 
     if (abs(timeav/dtav-nint(timeav/dtav))>1e-4) then
-      stop 'timeav must be a integer multiple of dtav'
+      stop 'NAMSAMPLING: timeav must be a integer multiple of dtav'
     end if
     if (.not. ladaptive .and. abs(dtav/dtmax-nint(dtav/dtmax))>1e-4) then
-      stop 'dtav should be a integer multiple of dtmax'
+      stop 'NAMSAMPLING: dtav should be a integer multiple of dtmax'
     end if
 
     allocate( wfavl     (k1,isamptot),thlfavl  (k1,isamptot),thvfavl   (k1,isamptot), &

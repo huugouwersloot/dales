@@ -116,10 +116,10 @@ contains
     tnextwrite       = itimeav + btime
 
     if (abs(timeav/dtav-nint(timeav/dtav))>1e-4) then
-      stop 'timeav must be a integer multiple of dtav'
+      stop 'NAMquadrant: timeav must be a integer multiple of dtav'
     end if
     if (.not. ladaptive .and. abs(dtav/dtmax-nint(dtav/dtmax))>1e-4) then
-      stop 'dtav should be a integer multiple of dtmax'
+      stop 'NAMquadrant: dtav should be a integer multiple of dtmax'
     end if
 
     nvar   = 22 + 4 * nsv

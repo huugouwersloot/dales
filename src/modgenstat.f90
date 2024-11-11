@@ -234,7 +234,7 @@ contains
     dt_lim = min(dt_lim,tnext)
 
     if (abs(timeav/dtav-nsamples)>1e-4) then
-      stop 'timeav must be a integer multiple of dtav'
+      stop 'NAMGENSTAT: timeav must be a integer multiple of dtav'
     end if
 
     allocate(umn(k1),vmn(k1),wmn(k1))

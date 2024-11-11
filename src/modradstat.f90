@@ -124,10 +124,10 @@ contains
     dt_lim = min(dt_lim,tnext)
 
     if (abs(timeav/dtav-nsamples)>1e-4) then
-      stop 'timeav must be a integer multiple of dtav'
+      stop 'NAMRADSTAT: timeav must be a integer multiple of dtav'
     end if
     if (.not. ladaptive .and. abs(dtav/dtmax-nint(dtav/dtmax))>1e-4) then
-      stop 'dtav should be a integer multiple of dtmax'
+      stop 'NAMRADSTAT: dtav should be a integer multiple of dtmax'
     end if
 
     allocate(lwuav(k1))

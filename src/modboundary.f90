@@ -39,8 +39,8 @@ public :: initboundary, boundary, exitboundary, grwdamp, ksp, tsc, cyclich
   logical :: lboundopen = .false.            !GT switch for open boundary conditions for all scalars
   real(field_r) :: fillvalues(100) = 0       !GT fill value for each scalar to apply at the boundary
 
-  real(field_r), public              :: dtheta !< Applied gradient of qt at top of model
-  real(field_r), public              :: dqt    !< Applied gradient of theta at top of model
+  real, public              :: dtheta !< Applied gradient of qt at top of model
+  real, public              :: dqt    !< Applied gradient of theta at top of model
   real(field_r), public, allocatable :: dsv(:) !< Applied gradient of sv(n) at top of model
 contains
 !>

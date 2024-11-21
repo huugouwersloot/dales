@@ -59,8 +59,9 @@ save
 
   real    :: dtav
   integer(kind=longint) :: idtav, tnext
-  logical :: lcross = .false. !< switch for doing the lsmcrosssection (on/off)
-  integer :: crossplane = 2 !< Location of the xz lsmcrosssection
+  logical :: lcross = .false.     !< switch for doing the lsmcrosssection (on/off)
+  logical :: lcrosssoil = .false. !< switch for doing vertical soil crosssection (on/off)
+  integer :: crossplane = 2       !< Location of the xz lsmcrosssection
 
 contains
 !> Initializing lsmcrosssection. Read out the namelist, initializing the variables
@@ -76,7 +77,7 @@ contains
     integer :: ierr
 
     namelist/NAMLSMCROSSSECTION/ &
-    lcross, dtav, crossheight, crossplane
+    lcross, lcrosssoil, dtav, crossheight, crossplane
 
     crossheight=2
     ncid2=2
@@ -91,60 +92,72 @@ contains
       close(ifnamopt)
     end if
 
-    if (lcross .and. .not. (isurf == 1 .or. isurf == 11)) then
+    if (lcross .and. .not. (isurf == 1 .or. isurf == 2 .or. isurf == 11)) then
        lcross = .FALSE.
-       write (6,*) "Ignoring lcross, lsmcrossection currently implemented only for isurf==1 or 11."
+       write (6,*) "Ignoring lcross, lsmcrossection currently implemented only for isurf==1, 2, or 11."
+    endif
+
+    if (lcrosssoil .and. .not. (isurf == 1 .or. isurf == 11)) then
+       lcrosssoil = .FALSE.
+       write (6,*) "Ignoring lcrosssoil, lsm soil crossection currently implemented only for isurf==1 or 11."
     endif
 
     call D_MPI_BCAST(dtav       ,1,0,comm3d,mpierr)
     call D_MPI_BCAST(lcross     ,1,0,comm3d,mpierr)
+    call D_MPI_BCAST(lcrosssoil ,1,0,comm3d,mpierr)
     call D_MPI_BCAST(crossheight,1,0,comm3d,mpierr)
     call D_MPI_BCAST(crossplane ,1,0,comm3d,mpierr)
 
     idtav = int(dtav / tres, kind=kind(idtav))
     tnext   = idtav+btime
-    if(.not.(lcross)) return
+    if(.not.(lcross .or. lcrosssoil)) return
     dt_lim = min(dt_lim,tnext)
 
-    if((crossheight>ksoilmax) .or. crossplane>j1) then
-      stop 'lsmcrosssection: lsmcrosssection out of range'
+    if (lcrosssoil) then
+       if((crossheight>ksoilmax) .or. crossplane>j1) then
+          stop 'lsmcrosssection: lsmcrosssection out of range'
+       end if
+       if (.not. ladaptive .and. abs(dtav/dtmax-nint(dtav/dtmax))>1e-4) then
+          stop 'lsmcrosssection: dtav should be a integer multiple of dtmax'
+       end if
+       if (lnetcdf) then
+          if (myidy==0) then
+             fname1(12:19) = cmyid
+             fname1(21:23) = cexpnr
+             call nctiminfo(tncname1(1,:))
+             call ncinfo(ncname1( 1,:),'tsoil', 'xz crosssection of the Soil temperature','K','t0tts')
+             call ncinfo(ncname1( 2,:),'phiw', 'xz crosssection of the Soil moisture','m3/m3','t0tts')
+             call open_nc(trim(output_prefix)//fname1,  ncid1,nrec1,n1=imax,ns=ksoilmax)
+             if (nrec1==0) then
+                call define_nc( ncid1, 1, tncname1)
+                call writestat_dims_nc(ncid1)
+                call define_nc( ncid1, NVar, ncname1)
+             end if
+          end if
+          write(cheight,'(i4.4)') crossheight
+          fname2(12:15) = cheight
+          fname2(17:24) = cmyid
+          fname2(26:28) = cexpnr
+          call nctiminfo(tncname2(1,:))
+          call ncinfo(ncname2( 1,:),'tsoil', 'xy crosssection of the Soil temperature','K','tt0t')
+          call ncinfo(ncname2( 2,:),'phiw', 'xy crosssection of the Soil moisture','m3/m3','tt0t')
+          call open_nc(trim(output_prefix)//fname2,  ncid2,nrec2,n1=imax,n2=jmax)
+          if (nrec2==0) then
+             call define_nc( ncid2, 1, tncname2)
+             call writestat_dims_nc(ncid2)
+             call define_nc( ncid2, NVar, ncname2)
+          end if
+       end if
     end if
-    if (.not. ladaptive .and. abs(dtav/dtmax-nint(dtav/dtmax))>1e-4) then
-      stop 'lsmcrosssection: dtav should be a integer multiple of dtmax'
-    end if
-    if (lnetcdf) then
-      if (myidy==0) then
-        fname1(12:19) = cmyid
-        fname1(21:23) = cexpnr
-        call nctiminfo(tncname1(1,:))
-        call ncinfo(ncname1( 1,:),'tsoil', 'xz crosssection of the Soil temperature','K','t0tts')
-        call ncinfo(ncname1( 2,:),'phiw', 'xz crosssection of the Soil moisture','m3/m3','t0tts')
-        call open_nc(trim(output_prefix)//fname1,  ncid1,nrec1,n1=imax,ns=ksoilmax)
-        if (nrec1==0) then
-          call define_nc( ncid1, 1, tncname1)
-          call writestat_dims_nc(ncid1)
-          call define_nc( ncid1, NVar, ncname1)
-        end if
-      end if
-        write(cheight,'(i4.4)') crossheight
-        fname2(12:15) = cheight
-        fname2(17:24) = cmyid
-        fname2(26:28) = cexpnr
-        call nctiminfo(tncname2(1,:))
-        call ncinfo(ncname2( 1,:),'tsoil', 'xy crosssection of the Soil temperature','K','tt0t')
-        call ncinfo(ncname2( 2,:),'phiw', 'xy crosssection of the Soil moisture','m3/m3','tt0t')
-        call open_nc(trim(output_prefix)//fname2,  ncid2,nrec2,n1=imax,n2=jmax)
-        if (nrec2==0) then
-          call define_nc( ncid2, 1, tncname2)
-          call writestat_dims_nc(ncid2)
-          call define_nc( ncid2, NVar, ncname2)
-        end if
-!
-!       ! Surface values
+
+    if (lnetcdf .and. lcross) then
+        ! Surface values
         fname3(11:18) = cmyid
         fname3(20:22) = cexpnr
         if (isurf == 1) then
             nvar3 = 12
+         else if (isurf == 2) then
+            nvar3 = 8
         else if (isurf == 11) then
             nvar3 = 13
             if (lags) nvar3 = nvar3 + 2
@@ -170,6 +183,22 @@ contains
             if (nrec3==0) then
               call define_nc(ncid3, 1, tncname3)
               call writestat_dims_nc(ncid3)
+            end if
+            call define_nc(ncid3, nvar3, ncname3)
+        else if (isurf == 2) then
+            call nctiminfo(tncname3(1,:))
+            call ncinfo(ncname3( 1,:),'hfss','Surface upward sensible heat flux','W/m^2','tt0t')
+            call ncinfo(ncname3( 2,:),'hfls','Surface upward latent heat flux','W/m^2','tt0t')
+            call ncinfo(ncname3( 3,:),'obuk', 'Obukhov length', 'm', 'tt0t')
+            call ncinfo(ncname3( 4,:),'ustar', 'Friction velocity', 'm/s^-1', 'tt0t')
+            call ncinfo(ncname3( 5,:),'Cs', 'Drag coefficient for scalars', '-', 'tt0t')
+            call ncinfo(ncname3( 6,:),'Cm', 'Drag coefficient for momentum','-', 'tt0t')
+            call ncinfo(ncname3( 7,:),'z0h','Surface roughness length for heat','m', 'tt0t')
+            call ncinfo(ncname3( 8,:),'z0m','Surface roughness length for momentum','m', 'tt0t')
+            call open_nc(trim(output_prefix)//fname3,  ncid3,nrec3,n1=imax,n2=jmax)
+            if (nrec3==0) then
+               call define_nc(ncid3, 1, tncname3)
+               call writestat_dims_nc(ncid3)
             end if
             call define_nc(ncid3, nvar3, ncname3)
         else if (isurf == 11) then
@@ -200,8 +229,6 @@ contains
             call define_nc( ncid3, nvar3, ncname3)
         end if
     end if
-
-
   end subroutine initlsmcrosssection
 !>Run lsmcrosssection. Mainly timekeeping
   subroutine lsmcrosssection
@@ -210,7 +237,7 @@ contains
     implicit none
 
 
-    if (.not. lcross) return
+    if (.not. (lcross .or. lcrosssoil)) return
     if (rk3step/=3) return
     if(timee<tnext) then
       dt_lim = min(dt_lim,tnext-timee)
@@ -218,10 +245,14 @@ contains
     end if
     tnext = tnext+idtav
     dt_lim = minval((/dt_lim,tnext-timee/))
-   call wrtvert
-   call wrthorz
-   call wrtsurf
 
+    if (lcrosssoil) then
+       call wrtvert
+       call wrthorz
+    end if
+    if (lcross) then
+       call wrtsurf
+    end if
   end subroutine lsmcrosssection
 
 
@@ -290,65 +321,17 @@ contains
 
   !> Do the xy lsmcrosssections and dump them to file
   subroutine wrtsurf
-    use modglobal, only : imax,jmax,i1,j1,cexpnr,ifoutput,rtimee
+    use modglobal, only : imax,jmax,i1,j1,rtimee,cp,rlv
+    use modfields, only : rhof
     use modsurfdata, only : Qnet, H, LE, G0, rs, ra, tskin, tendskin, &
-                           cliq, rsveg, rssoil, Wl, isurf, obl, ustar
+                            cliq, rsveg, rssoil, Wl, isurf, obl, ustar, &
+                            Cs, Cm, z0h, z0m, qtflux, thlflux
     use modlsm, only : f1, f2b, lags, an_co2, resp_co2
     use modstat_nc, only : lnetcdf, writestat_nc
     implicit none
 
     ! LOCAL
-    integer i,j
     real, allocatable :: vars(:,:,:)
-
-    open(ifoutput,file='movh_qnet.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((qnet(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_h.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((h(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_le.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((le(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_g0.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((g0(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_rs.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((rs(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_ra.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((ra(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_tskin.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((tskin(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_tendskin.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((tendskin(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_cliq.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((cliq(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_rsveg.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((rsveg(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_rssoil.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((rssoil(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
-    open(ifoutput,file='movh_wl.'//cexpnr,position='append',action='write')
-    write(ifoutput,'(es12.5)') ((wl(i,j),i=2,i1),j=2,j1)
-    close(ifoutput)
-
     if (lnetcdf) then
         allocate(vars(1:imax,1:jmax,nvar3))
 
@@ -365,6 +348,15 @@ contains
             vars(:,:,10) = Wl(2:i1,2:j1)
             vars(:,:,11) = rssoil(2:i1,2:j1)
             vars(:,:,12) = rsveg(2:i1,2:j1)
+        else if (isurf == 2) then
+            vars(:,:, 1) = rhof(1) * cp * thlflux(2:i1,2:j1)  ! H not allocated for isurf=2
+            vars(:,:, 2) = rhof(1) * rlv * qtflux (2:i1,2:j1) ! LE not allocated for isurf=2
+            vars(:,:, 3) = obl(2:i1,2:j1)
+            vars(:,:, 4) = ustar(2:i1,2:j1)
+            vars(:,:, 5) = Cs(2:i1,2:j1)
+            vars(:,:, 6) = Cm(2:i1,2:j1)
+            vars(:,:, 7) = z0h(2:i1,2:j1)
+            vars(:,:, 8) = z0m(2:i1,2:j1)
         else if (isurf == 11) then
             vars(:,:, 1) = H(2:i1,2:j1)
             vars(:,:, 2) = LE(2:i1,2:j1)
@@ -399,15 +391,16 @@ contains
     use modmpi, only : myidy
     implicit none
 
-    if(lcross .and. lnetcdf) then
+    if(lcrosssoil .and. lnetcdf) then
       if (myidy==0) then
-        call exitstat_nc(ncid1)
+        call exitstat_nc(ncid1) ! xz soil
       end if
-      call exitstat_nc(ncid2)
-      call exitstat_nc(ncid3)
-      deallocate(ncname3)
+      call exitstat_nc(ncid2)   ! xy soil
     end if
-
+    if(lcross .and. lnetcdf) then
+       call exitstat_nc(ncid3) ! surface
+       deallocate(ncname3)
+    end if
   end subroutine exitlsmcrosssection
 
 end module modlsmcrosssection

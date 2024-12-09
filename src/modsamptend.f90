@@ -778,12 +778,14 @@ subroutine initsamptend
 
 !> Cleans up after the run
   subroutine exitsamptend
-    use modstat_nc, only: lnetcdf
+    use modstat_nc, only: exitstat_nc,lnetcdf
   implicit none
 
     if (.not. lsamptend) return
     if(isamptot == 0) return
     if(.not.(lnetcdf)) return
+
+    call exitstat_nc(ncid)
     deallocate (uptm,vptm,wptm,thlptm,qtptm,qrptm,nrptm)
     deallocate (upmn,vpmn,wpmn,thlpmn,qtpmn,qrpmn,nrpmn)
     deallocate (upav,vpav,wpav,thlpav,qtpav,qrpav,nrpav)

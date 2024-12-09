@@ -311,7 +311,7 @@ contains
   end subroutine initsampling
 !> Cleans up after the run
   subroutine exitsampling
-    use modstat_nc, only : lnetcdf
+    use modstat_nc, only : exitstat_nc,lnetcdf
     use modmpi,     only : myid
     implicit none
 
@@ -323,7 +323,10 @@ contains
                 pfavl   ,dwdthavl,dwwdzhavl,dpdzhavl,duwdxhavl,dtaudxhavl,dtaudzhavl,  &
                 thvhavl ,fcorhavl,wh_el,sigh_el)
     deallocate(wadvhavl,subphavl,nrtsamphav)
-    if (lnetcdf .and. myid==0) deallocate(ncname)
+    if (lnetcdf .and. myid==0) then
+        call exitstat_nc(ncid)
+        deallocate(ncname)
+    end if
 
   end subroutine exitsampling
 

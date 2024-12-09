@@ -2,8 +2,8 @@
 iexpnr     =  001
 lwarmstart = .false.
 startfile  =  'initdlatestmx000y000.001'
-runtime = 43200
-trestart = 43200
+runtime = 400
+trestart = -1
 ladaptive  =  .true.
 irandom    =  44
 randthl    =  0.1
@@ -12,17 +12,17 @@ nsv        =  2
 courant    = .5
 peclet     = .1
 loutdirs = .true.
-nprocx = 32
-nprocy = 32
+nprocx = 2
+nprocy = 2
 /
 
 &DOMAIN
-itot = 1536
-jtot = 1536
+itot = 80
+jtot = 80
 kmax       =  175
 
-xsize = 153600
-ysize = 153600
+xsize = 8000
+ysize = 8000
 
 xlat       =  13.1
 xlon       =  302
@@ -67,7 +67,7 @@ iadv_mom   =  62
 iadv_tke   =  62
 iadv_thl   =  62
 iadv_qt    =  52
-iadv_sv    =  52, 52
+iadv_sv    =  52
 /
 
 &NAMMICROPHYSICS
@@ -85,10 +85,15 @@ dtav       = 60
 tcheck     = 0
 /
 &NAMSAMPLING
-lsampcl    = .false.
+lsampcl    = .true.
 lsampco    = .false.
 dtav       = 60
-timeav     = 21600
+timeav     = 60
+lsamptend = .true.
+lsamptendw = .true.
+lsamptendthl = .true.
+lsamptendqt = .true.
+lprocblock = .true.
 /
 &NAMTIMESTAT
 ltimestat  = .true.
@@ -112,20 +117,20 @@ lcape      = .true.
 dtav       = 300
 / 
 &NAMFIELDDUMP
-lfielddump = .true.
+lfielddump = .false.
 ! lclassic   = .false.
-dtav       = 3600
-khigh      = 149    ! 132=4030m  149=5048m
+! dtav       = 3600
+! khigh      = 149    ! 132=4030m  149=5048m
 ! tmin       = 43200  ! start fielddumps at 12h (implemented in to4.4_Fredrik)
 ! select vartiables to store (implemented in to4.4_Fredrik, not in v4.3)
-lu    = .true.      ! consider omitting u, v
-lv    = .true.
-lw    = .true.
-lqt   = .true.
-lql   = .true.
-lthl  = .true.
-lbuoy = .false.
-lsv   = .false., .true.  ! not Nr, just qr
+! lu    = .true.      ! consider omitting u, v
+! lv    = .true.
+! lw    = .true.
+! lqt   = .true.
+! lql   = .true.
+! lthl  = .true.
+! lbuoy = .false.
+! lsv   = .false., .true.  ! not Nr, just qr
 /
 &NAMSTATTEND
 dtav       = 60
@@ -170,7 +175,7 @@ tnudgefac  = 1.
 &VVUQ_extra
 dudz          = 0.0022
 u0            = -10
-thl_low       = 
+! thl_low       = 
 w0            = 0.0045
 wpamp         = -0.00085
 case          = 2

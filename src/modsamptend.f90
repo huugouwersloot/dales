@@ -1607,7 +1607,7 @@ subroutine initsamptend
     if (.not. lsamptend) return
     if(isamptot == 0) return
     if(.not.(lnetcdf)) return
-	call exitstat_nc(ncid)
+    call exitstat_nc(ncid)
     if (lsamptendu) deallocate (uptm, upmn, upav, ust)
     if (lsamptendv) deallocate (vptm, vpmn, vpav, vst)
     if (lsamptendw) deallocate (wptm, wpmn, wpav, wst)

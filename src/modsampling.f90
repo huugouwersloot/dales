@@ -312,9 +312,9 @@ contains
                 thvhavl ,fcorhavl,wh_el,sigh_el)
     deallocate(wadvhavl,subphavl,nrtsamphav)
     if (lnetcdf .and. myid==0) then
-		call exitstat_nc(ncid)
-		deallocate(ncname)
-	end if
+        call exitstat_nc(ncid)
+        deallocate(ncname)
+    end if
 
   end subroutine exitsampling
 

@@ -6,9 +6,8 @@
 !!  Calculates profiles coming from the bulkmicrophysics
 !>
 !! Profiles coming from the bulkmicrophysics. Written to precep.expnr for the
-!! rain rates etc., and to qlptend.expnr, nptend.expnr and qtptend.expnr for the
-!! tendencies is rain water content, droplet number, and total water content,
-!! respectively.
+!! rain rates etc., and to qlptend.expnr and nptend.expnr for the
+!! tendencies is rain water content, droplet number, respectively.
 !! If netcdf is true, this module also writes in the profiles.expnr.nc output
 !!  \author Olivier Geoffroy, KNMI
 !!  \author Johan van de Dussen, TU Delft
@@ -38,24 +37,23 @@ private
 PUBLIC  :: initbulkmicrostat, bulkmicrostat, exitbulkmicrostat, bulkmicrotend
 save
 !NetCDF variables
-  integer,parameter :: nvar = 23
+  integer,parameter :: nvar = 20
   character(80),dimension(nvar,4) :: ncname
   character(80),dimension(1,4) :: tncname
   real          :: dtav, timeav
   integer(kind=longint):: idtav, itimeav, tnext, tnextwrite
   integer          :: nsamples
   logical          :: lmicrostat = .false.
-  integer, parameter      :: nrfields = 5  , &
+  integer, parameter      :: nrfields = 6  , &
                  iauto    = 2 , &
                   iaccr    = 3 , &
                ievap    = 4 , &
-               ised      = 5
+               ised      = 5, &
+               iclip = 6
   real, allocatable, dimension(:,:)  :: Npav    , &
                Npmn    , &
-               qlpav  , &
-               qlpmn  , &
-               qtpav  , &
-               qtpmn
+               qrpav  , &
+               qrpmn
   real, allocatable, dimension(:)    :: &
                precav  , &
                precmn  , &
@@ -75,8 +73,7 @@ save
                Dvrmn
 
   real(field_r), allocatable, dimension(:) :: tend_np, &
-                                              tend_qrp, &
-                                              tend_qtp
+                                              tend_qrp
 
 contains
 !> Initialization routine, reads namelists and inits variables
@@ -135,10 +132,8 @@ subroutine initbulkmicrostat
 
     allocate(Npav    (k1, nrfields), &
              Npmn    (k1, nrfields), &
-             qlpav   (k1, nrfields), &
-             qlpmn   (k1, nrfields), &
-             qtpav   (k1, nrfields), &
-             qtpmn   (k1, nrfields))
+             qrpav   (k1, nrfields), &
+             qrpmn   (k1, nrfields))
     allocate(&
              precav    (k1)    , &
              precmn    (k1)    , &
@@ -157,8 +152,7 @@ subroutine initbulkmicrostat
              Dvrav    (k1)    , &
              Dvrmn    (k1))
     Npmn    = 0.0
-    qlpmn    = 0.0
-    qtpmn    = 0.0
+    qrpmn    = 0.0
     precmn    = 0.0
     preccountmn  = 0.0
     prec_prcmn  = 0.0
@@ -170,13 +164,11 @@ subroutine initbulkmicrostat
 
     allocate(tend_np(k1))
     allocate(tend_qrp(k1))
-    allocate(tend_qtp(k1))
     tend_np(:) = 0.0
     tend_qrp(:) = 0.0
-    tend_qtp(:) = 0.0
 
-    !$acc enter data copyin(tend_np, tend_qrp, tend_qtp, Npmn, qlpmn, qtpmn,&
-    !$acc&                  Npav, qlpav, qtpav, precav, preccountav, prec_prcav, &
+    !$acc enter data copyin(tend_np, tend_qrp, Npmn, qrpmn, &
+    !$acc&                  Npav, qrpav, precav, preccountav, prec_prcav, &
     !$acc&                  cloudcountav, raincountav, Nrrainav, qrav, Dvrav, &
     !$acc&                  preccountmn, prec_prcmn, &
     !$acc&                  precmn, cloudcountmn, raincountmn, Nrrainmn, qrmn, Dvrmn)
@@ -187,8 +179,6 @@ subroutine initbulkmicrostat
       open (ifoutput,file = 'nptend.'//cexpnr ,status = 'replace')
       close(ifoutput)
       open (ifoutput,file = 'qlptend.'//cexpnr,status = 'replace')
-      close(ifoutput)
-      open (ifoutput,file = 'qtptend.'//cexpnr,status = 'replace')
       close(ifoutput)
     end if
 
@@ -212,17 +202,14 @@ subroutine initbulkmicrostat
         call ncinfo(ncname(10,:),'npaccr','Accretion rain drop tendency','#/m3/s','tt')
         call ncinfo(ncname(11,:),'npsed','Sedimentation rain drop tendency','#/m3/s','tt')
         call ncinfo(ncname(12,:),'npevap','Evaporation rain drop tendency','#/m3/s','tt')
-        call ncinfo(ncname(13,:),'nptot','Total rain drop tendency','#/m3/s','tt')
-        call ncinfo(ncname(14,:),'qrpauto','Autoconversion rain water content tendency','kg/kg/s','tt')
-        call ncinfo(ncname(15,:),'qrpaccr','Accretion rain water content tendency','kg/kg/s','tt')
-        call ncinfo(ncname(16,:),'qrpsed','Sedimentation rain water content tendency','kg/kg/s','tt')
-        call ncinfo(ncname(17,:),'qrpevap','Evaporation rain water content tendency','kg/kg/s','tt')
-        call ncinfo(ncname(18,:),'qrptot','Total rain water content tendency','kg/kg/s','tt')
-        call ncinfo(ncname(19,:),'qtpauto','Autoconversion total water content tendency','kg/kg/s','tt')
-        call ncinfo(ncname(20,:),'qtpaccr','Accretion total water content tendency','kg/kg/s','tt')
-        call ncinfo(ncname(21,:),'qtpsed','Sedimentation total water content tendency','kg/kg/s','tt')
-        call ncinfo(ncname(22,:),'qtpevap','Evaporation total water content tendency','kg/kg/s','tt')
-        call ncinfo(ncname(23,:),'qtptot','Total total water content tendency','kg/kg/s','tt')
+        call ncinfo(ncname(13,:),'npclip','Rain drop tendency due to clipping','#/m3/s','tt')
+        call ncinfo(ncname(14,:),'nptot','Total rain drop tendency','#/m3/s','tt')
+        call ncinfo(ncname(15,:),'qrpauto','Autoconversion rain water content tendency','kg/kg/s','tt')
+        call ncinfo(ncname(16,:),'qrpaccr','Accretion rain water content tendency','kg/kg/s','tt')
+        call ncinfo(ncname(17,:),'qrpsed','Sedimentation rain water content tendency','kg/kg/s','tt')
+        call ncinfo(ncname(18,:),'qrpevap','Evaporation rain water content tendency','kg/kg/s','tt')
+        call ncinfo(ncname(19,:),'qrpclip','Rain water content tendency due to clipping','kg/kg/s','tt')
+        call ncinfo(ncname(20,:),'qrptot','Total rain water content tendency','kg/kg/s','tt')
         call define_nc( ncid_prof, NVar, ncname)
       end if
 
@@ -353,7 +340,6 @@ subroutine initbulkmicrostat
   subroutine bulkmicrotend
     use modmpi,    only  : slabsum, slabsum_multi
     use modglobal,    only  : rk3step, timee, dt_lim, k1, ih, i1, jh, j1, ijtot
-    use modfields,    only  : qtp
     use modmicrodata,  only  : qrp, Nrp
     implicit none
 
@@ -375,29 +361,24 @@ subroutine initbulkmicrostat
     !$acc kernels default(present)
     tend_np(:) = 0.0
     tend_qrp(:) = 0.0
-    tend_qtp(:) = 0.0
     !$acc end kernels
 
-    !$acc host_data use_device(tend_np, Nrp, tend_qrp, qrp, tend_qtp, qtp)
+    !$acc host_data use_device(tend_np, Nrp, tend_qrp, qrp)
     call slabsum_multi(tend_np , 1,k1,Nrp  ,2,i1,2,j1,1,k1,2,i1,2,j1,1,k1, &
                        tend_qrp      ,qrp)
-    call slabsum(tend_qtp  ,1,k1,qtp  ,2-ih,i1+ih,2-jh,j1+jh,1,k1,2,i1,2,j1,1,k1)
     !$acc end host_data
 
     !$acc kernels default(present)
     Npav(:,ifield)  = tend_np(:)  - sum(Npav (:,1:ifield-1),2)
-    qlpav(:,ifield) = tend_qrp(:) - sum(qlpav(:,1:ifield-1),2)
-    qtpav(:,ifield) = tend_qtp(:) - sum(qtpav(:,1:ifield-1),2)
+    qrpav(:,ifield) = tend_qrp(:) - sum(qrpav(:,1:ifield-1),2)
     !$acc end kernels
 
     if (ifield == nrfields) then
       !$acc kernels default(present)
       Npmn(:,:)  = Npmn(:,:)  + Npav(:,:)  / nsamples / ijtot
-      qlpmn(:,:) = qlpmn(:,:) + qlpav(:,:) / nsamples / ijtot
-      qtpmn(:,:) = qtpmn(:,:) + qtpav(:,:) / nsamples / ijtot
+      qrpmn(:,:) = qrpmn(:,:) + qrpav(:,:) / nsamples / ijtot
       Npav(:,:)  = 0.0
-      qlpav(:,:) = 0.0
-      qtpav(:,:) = 0.0
+      qrpav(:,:) = 0.0
       !$acc end kernels
     end if
 
@@ -426,7 +407,7 @@ subroutine initbulkmicrostat
     nminut    = int (nsecs/60)-nhrs*60
     nsecs    = mod (nsecs,60)
 
-    !$acc update self(Npmn, qlpmn, qtpmn, cloudcountmn, raincountmn, preccountmn,&
+    !$acc update self(Npmn, qrpmn, cloudcountmn, raincountmn, preccountmn,&
     !$acc&            prec_prcmn, Dvrmn, Nrrainmn, precmn, qrmn)
 
     cloudcountmn(:) = cloudcountmn(:) / nsamples
@@ -532,41 +513,13 @@ subroutine initbulkmicrostat
       (k          , &
       zf    (k)      , &
       presf    (k)/100.    , &
-      qlpmn    (k,iauto)    , &
-      qlpmn    (k,iaccr)    , &
-      qlpmn    (k,ised)    , &
-      qlpmn    (k,ievap)    , &
-      sum(qlpmn  (k,2:nrfields))    , &
+      qrpmn    (k,iauto)    , &
+      qrpmn    (k,iaccr)    , &
+      qrpmn    (k,ised)    , &
+      qrpmn    (k,ievap)    , &
+      sum(qrpmn  (k,2:nrfields))    , &
                         k=1,kmax)
     close(ifoutput)
-
-    open (ifoutput,file='qtptend.'//cexpnr,position='append')
-    write(ifoutput,'(//2A,/A,F5.0,A,I4,A,I2,A,I2,A)')         &
-      '#-------------------------------------------------------------'   &
-      ,'---------------------------------)'           &
-      ,'#',(timeav),'--- AVERAGING TIMESTEP --- '         &
-      ,nhrs,':',nminut,':',nsecs             &
-      ,'   HRS:MIN:SEC AFTER INITIALIZATION '
-    write (ifoutput,'(2A/A/A/2A/A/A)')             &
-      '#------------------------------------------------------------'     &
-      , '------------'               &
-      ,'#               --------   T E N D E N C I E S QTP ------    '   &
-      ,'#                                                           '     &
-      ,'# LEV HEIGHT   PRES  |  AUTO         ACCR          SEDIM    '     &
-      ,'     EVAP         TOT '             &
-      ,'#      (M)   (MB)  |  ---------   (KG/KG/S)      ----------'     &
-      ,'#-----------------------------------------------------------'
-    write(ifoutput,'(I4,F10.2,F7.1,5E13.5)') &
-      (k          , &
-      zf    (k)      , &
-      presf    (k)/100.    , &
-      qtpmn    (k,iauto)    , &
-      qtpmn    (k,iaccr)    , &
-      qtpmn    (k,ised)    , &
-      qtpmn    (k,ievap)    , &
-      sum    (qtpmn(k,2:nrfields))  , &
-      k=1,kmax)
-      close(ifoutput)
       if (lnetcdf) then
         vars(:, 1) = cloudcountmn
         vars(:, 2) = prec_prcmn  (:)*rhof(:)*rlv
@@ -580,22 +533,17 @@ subroutine initbulkmicrostat
         vars(:,10) =Npmn    (:,iaccr)
         vars(:,11) =Npmn    (:,ised)
         vars(:,12) =Npmn    (:,ievap)
+        vars(:,13) =Npmn    (:,iclip)
         do k=1,k1
-        vars(k,13) =sum(Npmn  (k,2:nrfields))
+        vars(k,14) =sum(Npmn  (k,2:nrfields))
         enddo
-        vars(:,14) =qlpmn    (:,iauto)
-        vars(:,15) =qlpmn    (:,iaccr)
-        vars(:,16) =qlpmn    (:,ised)
-        vars(:,17) =qlpmn    (:,ievap)
+        vars(:,15) =qrpmn    (:,iauto)
+        vars(:,16) =qrpmn    (:,iaccr)
+        vars(:,17) =qrpmn    (:,ised)
+        vars(:,18) =qrpmn    (:,ievap)
+        vars(:,19) =qrpmn    (:,iclip)
         do k=1,k1
-        vars(k,18) =sum(qlpmn  (k,2:nrfields))
-        enddo
-        vars(:,19) =qtpmn    (:,iauto)
-        vars(:,20) =qtpmn    (:,iaccr)
-        vars(:,21) =qtpmn    (:,ised)
-        vars(:,22) =qtpmn    (:,ievap)
-        do k=1,k1
-        vars(k,23) =sum(qtpmn  (k,2:nrfields))
+        vars(k,20) =sum(qrpmn  (k,2:nrfields))
         enddo
         call writestat_nc(ncid_prof,nvar,ncname,vars(1:kmax,:),nrec_prof,kmax)
       end if
@@ -612,8 +560,7 @@ subroutine initbulkmicrostat
     precmn(:)       = 0.0
     qrmn(:)         = 0.0
     Npmn(:,:)         = 0.0
-    qlpmn(:,:)        = 0.0
-    qtpmn(:,:)        = 0.0
+    qrpmn(:,:)        = 0.0
     !$acc end kernels
 
   end subroutine writebulkmicrostat
@@ -633,18 +580,16 @@ subroutine initbulkmicrostat
     
     if (.not. lmicrostat)  return
 
-    !$acc exit data delete(tend_np, tend_qrp, tend_qtp, Npmn, qlpmn, qtpmn,&
-    !$acc&                 Npav, qlpav, qtpav, precav, preccountav, prec_prcav, &
+    !$acc exit data delete(tend_np, tend_qrp, Npmn, qrpmn, &
+    !$acc&                 Npav, qrpav, precav, preccountav, prec_prcav, &
     !$acc&                 cloudcountav, raincountav, Nrrainav, qrav, Dvrav, &
     !$acc&                 preccountmn, prec_prcmn, &
     !$acc&                 precmn, cloudcountmn, raincountmn, Nrrainmn, qrmn, Dvrmn)
 
     deallocate(Npav     , &
                Npmn     , &
-               qlpav    , &
-               qlpmn    , &
-               qtpav    , &
-               qtpmn    )
+               qrpav    , &
+               qrpmn)
     deallocate(&
          precav    , &
          precmn    , &
@@ -663,7 +608,7 @@ subroutine initbulkmicrostat
          Dvrav    , &
          Dvrmn)
 
-    deallocate(tend_np, tend_qrp, tend_qtp)
+    deallocate(tend_np, tend_qrp)
 
   end subroutine exitbulkmicrostat
 

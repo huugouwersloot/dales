@@ -298,6 +298,23 @@ module modbulkmicro
     !*********************************************************************
     ! remove negative values and non physical low values
     !*********************************************************************
+    !$acc parallel loop collapse(3) default(present) private(qr_cor, Nr_cor)
+    do k = min(qrbase, qcbase), max(qrroof, qcroof)
+      do j = 2, j1
+        do i = 2, i1
+          qr_cor = min(svp(i,j,k,iqr) + qrp(i,j,k) + (svm(i,j,k,iqr) / delt), &
+                       0.0_field_r)
+          Nr_cor = min(svp(i,j,k,iNr) + Nrp(i,j,k) + (svm(i,j,k,iNr) / delt), &
+                       0.0_field_r)
+
+          qrp(i,j,k) = qrp(i,j,k) - qr_cor
+          Nrp(i,j,k) = Nrp(i,j,k) - Nr_cor
+        end do
+      end do
+    end do
+
+    call bulkmicrotend
+
     ! qcbase/qcroof are based on ql0.gt.qcmin and
     ! qrbase/qrroof are based on qr.gt.qrmin
     ! but we need boundaries to update qtp/thlp.
@@ -320,10 +337,6 @@ module modbulkmicro
 
           svp(i,j,k,iqr) = svp(i,j,k,iqr) + qrp(i,j,k)
           svp(i,j,k,inr) = svp(i,j,k,inr) + Nrp(i,j,k)
-
-          ! clip the tendencies so that qr,Nr >= 0 next step
-          svp(i,j,k,iqr) = max(svp(i,j,k,iqr), -svm(i,j,k,iqr)/delt)
-          svp(i,j,k,inr) = max(svp(i,j,k,inr), -svm(i,j,k,inr)/delt)
         enddo
       enddo
     enddo
